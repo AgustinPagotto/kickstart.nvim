@@ -755,12 +755,22 @@ require('lazy').setup({
         local disable_filetypes = { c = true, cpp = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
-        else
-          return {
-            timeout_ms = 500,
-            lsp_format = 'fallback',
-          }
         end
+
+        -- Repos with their own established style but no formatter config
+        -- (e.g. no .swiftformat) shouldn't get auto-reformatted on save.
+        local disable_in_roots = { 'iOS_Members' }
+        local bufname = vim.api.nvim_buf_get_name(bufnr)
+        for _, root in ipairs(disable_in_roots) do
+          if bufname:find('/' .. root .. '/', 1, true) then
+            return nil
+          end
+        end
+
+        return {
+          timeout_ms = 500,
+          lsp_format = 'fallback',
+        }
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
@@ -908,6 +918,42 @@ require('lazy').setup({
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
+  { -- Build, run, and test iOS/macOS Xcode projects from Neovim
+    'wojciech-kulik/xcodebuild.nvim',
+    dependencies = {
+      'nvim-telescope/telescope.nvim', -- picker
+      'MunifTanjim/nui.nvim', -- floating code coverage UI
+      'nvim-treesitter/nvim-treesitter', -- Quick test support
+      'stevearc/oil.nvim', -- file management integration
+    },
+    config = function()
+      require('xcodebuild').setup {}
+
+      vim.keymap.set('n', '<leader>X', '<cmd>XcodebuildPicker<cr>', { desc = 'Show Xcodebuild Actions' })
+      vim.keymap.set('n', '<leader>xf', '<cmd>XcodebuildProjectManager<cr>', { desc = 'Show Project Manager Actions' })
+
+      vim.keymap.set('n', '<leader>xb', '<cmd>XcodebuildBuild<cr>', { desc = 'Build Project' })
+      vim.keymap.set('n', '<leader>xB', '<cmd>XcodebuildBuildForTesting<cr>', { desc = 'Build For Testing' })
+      vim.keymap.set('n', '<leader>xr', '<cmd>XcodebuildRun<cr>', { desc = 'Run Project' })
+      vim.keymap.set('n', '<leader>xt', '<cmd>XcodebuildTest<cr>', { desc = 'Run Tests' })
+      vim.keymap.set('n', '<leader>xT', '<cmd>XcodebuildTestClass<cr>', { desc = 'Run This Test Class' })
+      vim.keymap.set('n', '<leader>x.', '<cmd>XcodebuildTestRepeat<cr>', { desc = 'Repeat Last Test Run' })
+
+      vim.keymap.set('n', '<leader>xl', '<cmd>XcodebuildToggleLogs<cr>', { desc = 'Toggle Xcodebuild Logs' })
+      vim.keymap.set('n', '<leader>xd', '<cmd>XcodebuildSelectDevice<cr>', { desc = 'Select Device' })
+      vim.keymap.set('n', '<leader>xp', '<cmd>XcodebuildSelectTestPlan<cr>', { desc = 'Select Test Plan' })
+      vim.keymap.set('n', '<leader>xc', '<cmd>XcodebuildSelectScheme<cr>', { desc = 'Select Scheme' })
+
+      vim.keymap.set('n', '<leader>xq', '<cmd>Telescope quickfix<cr>', { desc = 'Show QuickFix List' })
+
+      vim.keymap.set('n', '<leader>xx', '<cmd>XcodebuildQuickfixLine<cr>', { desc = 'Quickfix Line' })
+      vim.keymap.set('n', '<leader>xa', '<cmd>XcodebuildCodeActions<cr>', { desc = 'Show Code Actions' })
+
+      vim.keymap.set('n', '<leader>xs', '<cmd>XcodebuildOutlineToggle<cr>', { desc = 'Toggle Test Explorer' })
+      vim.keymap.set('n', '<leader>xw', '<cmd>XcodebuildToggleWatcher<cr>', { desc = 'Toggle File Watcher' })
+    end,
+  },
+
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -952,7 +998,7 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'css', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'go', 'typescript', 'javascript' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'css', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'go', 'typescript', 'javascript', 'swift' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
